@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кассовый аппарат c Конструктором</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --orange:#A5B4FC;
+    --orange-dark:#818CF8;
+    --purple:#7C7FF7;
+    --purple-dark:#5B5FE8;
+    --purple-glow: rgba(124,127,247,.55);
+    --purple-soft: rgba(124,127,247,.14);
+    --cream:#0B0B22;
+    --paper: rgba(255,255,255,.05);
+    --ink:#F2F1FB;
+    --muted:#9C9AC4;
+    --line: rgba(255,255,255,.14);
+    --green:#34D399;
+    --red:#F87171;
+    --card-bg: rgba(255,255,255,.055);
+    --input-bg: rgba(255,255,255,.06);
+    --glass-blur: 18px;
+    --glass-border: rgba(255,255,255,.16);
+  }
+
+  body.dark-theme {
+    --cream:#050510;
+    --paper: rgba(255,255,255,.035);
+    --ink:#F2F1FB;
+    --muted:#8987B5;
+    --line: rgba(255,255,255,.1);
+    --card-bg: rgba(255,255,255,.035);
+    --input-bg: rgba(255,255,255,.04);
+    --glass-border: rgba(255,255,255,.1);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; color:var(--ink); font-family:'Inter',sans-serif;
+    transition: background 0.4s, color 0.3s; user-select:none;
+    background: #05030b;
+  }
+  body.dark-theme{
+    background: #020108;
+  }
+  h1,h2,h3,.brand-name,.tabbtn{font-family:'Fredoka',sans-serif;}
+
+  header.top{
+    background: rgba(255,255,255,.05);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border:1px solid var(--glass-border);
+    margin:16px 20px 0; border-radius:22px;
+    padding:14px 24px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    position:sticky; top:16px; z-index:50;
+  }
+  .brand-wrap{display:flex; flex-direction:column; gap:2px; flex:1;}
+  .brand-name{ color:#fff; font-size:22px; font-weight:700; background:transparent; border:none; outline:none; }
+  .brand-sub{ color:rgba(255,255,255,.6); font-size:12.5px; background:transparent; border:none; outline:none; }
+
+  .header-btn {
+    background: rgba(255,255,255,0.07); border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: #fff; padding: 8px 16px; border-radius: 30px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; transition: 0.2s;
+  }
+  .header-btn:hover { background: rgba(255,255,255,0.28); }
+
+  /* ХОЛСТ ГЛАВНОГО ЭКРАНА */
+  .main-canvas {
+    position: relative; width: 100%; min-height: 90vh; padding: 24px 28px;
+    max-width: none; margin: 0;
+  }
+
+  /* ВСЕ ПЕРЕТАСКИВАЕМЫЕ БЛОКИ */
+  .drag-block {
+    position: absolute; z-index: 10; transition: box-shadow 0.2s;
+  }
+
+  /* РЕЖИМ РЕДАКТИРОВАНИЯ ЭКРАНА */
+  body.edit-mode .drag-block {
+    outline: 2px dashed var(--purple); outline-offset: 4px; cursor: move !important;
+  }
+  body.edit-mode .drag-block:active { opacity: 0.9; z-index: 100; }
+  body.edit-mode .card { cursor: context-menu !important; }
+
+  /* УГЛОВЫЕ РУЧКИ РЕСАЙЗА */
+  .resize-handle {
+    display: none; position: absolute; width: 12px; height: 12px; background: var(--purple);
+    border: 2px solid #fff; border-radius: 50%; z-index: 101;
+  }
+  body.edit-mode .drag-block .resize-handle { display: block; }
+  .handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+  .handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+  .handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+  .handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+  .profit-card {
+    background:linear-gradient(135deg, rgba(22,163,74,.55) 0%, rgba(21,121,64,.6) 100%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border:1px solid rgba(255,255,255,.35);
+    color:#fff; padding:12px 18px; border-radius:16px; cursor:pointer;
+    box-shadow:0 8px 24px rgba(21,121,64,.25); width: 100%; height: 100%;
+  }
+  .profit-card:hover { filter: brightness(1.08); }
+  .profit-card .p-title { font-size:11px; font-weight:600; text-transform:uppercase; opacity:.9; }
+  .profit-card .p-val { font-family:'Fredoka',sans-serif; font-size:19px; font-weight:700; margin-top:2px; }
+
+  .tabbtn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--card-bg); border:1.5px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    padding:10px 18px; border-radius:16px;
+    cursor:pointer; font-weight:600; font-size:14px; color:var(--ink); width: 100%; height: 100%;
+    position:relative; overflow:hidden; transition: background .2s, box-shadow .2s;
+  }
+  .tabbtn.active{
+    background:linear-gradient(135deg, rgba(124,127,247,.75) 0%, rgba(91,95,232,.8) 100%);
+    color:#fff; border-color:rgba(255,255,255,.4); box-shadow:0 8px 20px rgba(124,127,247,.4);
+  }
+  .tabbtn img.custom-icon { width: 22px; height: 22px; object-fit: cover; border-radius: 4px; }
+
+  /* СТИКЕР -> КРУПНАЯ КАРТИНКА НА ВСЮ ЯЧЕЙКУ */
+  .icon-wrap{ display:inline-flex; align-items:center; justify-content:center; }
+  .icon-wrap.icon-fill{
+    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    border-radius:inherit; overflow:hidden; display:flex;
+  }
+  .icon-wrap.icon-fill img.custom-icon{
+    width:100%; height:100%; object-fit:cover; border-radius:inherit;
+  }
+  .tabbtn > span:not(.icon-wrap){ position:relative; z-index:1; }
+  .tabbtn.has-bg-image{ border-color: transparent; }
+  .tabbtn.has-bg-image > span:not(.icon-wrap){
+    background:rgba(0,0,0,.55); color:#fff; padding:3px 9px; border-radius:8px; backdrop-filter: blur(1px);
+  }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:14px; width: 100%; }
+  .card{
+    background:var(--card-bg); border:1px solid var(--glass-border); border-radius:18px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    box-shadow: 0 8px 24px rgba(124,127,247,.10);
+    padding:14px; cursor:pointer; display:flex; flex-direction:column; gap:8px; min-height:140px;
+    transition:transform .12s, box-shadow .12s; overflow:hidden;
+  }
+  .card:hover{ transform:translateY(-3px); box-shadow: 0 14px 30px rgba(124,127,247,.22); }
+  .card .media-box {
+    width: 100%; height: 70px; border-radius: 12px; overflow: hidden;
+    background: var(--purple-soft); display: flex; align-items: center; justify-content: center;
+  }
+  .card .media-box img { width: 100%; height: 100%; object-fit: cover; }
+  .card .media-box .emoji-text { font-size: 32px; }
+  .card .name{ font-weight:600; font-size:13px; color:var(--ink); }
+  .card .price{ margin-top:auto; font-weight:700; color:var(--orange-dark); font-size:13px; }
+
+  /* ЧЕК */
+  .receipt-shell{
+    width: 100%; height: 100%; background:var(--paper); border:1px solid var(--glass-border); border-radius:16px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    padding:20px; box-shadow:0 14px 36px rgba(124,127,247,.16); display:flex; flex-direction:column; overflow-y: auto;
+  }
+  .receipt-shell.sealed {
+    border: 2px solid var(--red);
+    background: rgba(239, 68, 68, 0.06);
+  }
+  .r-brand{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px; text-align:center; }
+  .r-sub{ text-align:center; font-size:11.5px; color:var(--muted); }
+  .r-datetime{ text-align:center; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+  .r-divider{ border:none; border-top:1.5px dashed var(--line); margin:10px 0; }
+  
+  .client-inputs-box{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;
+    background:var(--purple-soft); padding:8px; border-radius:12px; border:1px solid var(--line);
+  }
+  .client-inputs-box input{
+    width:100%; border:1.5px solid var(--line); border-radius:8px; padding:6px;
+    font-size:11px; font-family:'Inter',sans-serif; background:var(--input-bg); color:var(--ink); outline:none;
+  }
+  .client-inputs-box input.field-error{ border-color:var(--red); background:rgba(239,68,68,.1); }
+
+  /* КРАСНОЕ ПРЕДУПРЕЖДЕНИЕ О ПУСТЫХ ПОЛЯХ */
+  .required-warn{
+    display:none; margin-top:8px; padding:8px 10px; border-radius:10px;
+    background:rgba(239,68,68,.14); border:1px solid var(--red);
+    color:var(--red); font-size:12px; font-weight:700; text-align:center;
+  }
+  .required-warn.show{ display:block; }
+
+  /* ДАННЫЕ КЛИЕНТА В ЧЕКЕ */
+  .client-summary{
+    margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.6;
+  }
+  .client-summary .cs-row{ display:flex; justify-content:space-between; gap:8px; }
+  .client-summary .cs-label{ color:var(--muted); }  /* СПИСОК УДАЛЕНИЯ КАТЕГОРИЙ И ЯЧЕЕК */
+  .manage-cat{ border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; background:var(--purple-soft); }
+  .manage-cat-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+  .manage-dish{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px dashed var(--line); font-size:13px; }
+  .btn-del{ background:var(--red); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-weight:600; cursor:pointer; font-size:12px; }
+
+  .r-items{ min-height:70px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .r-empty{ color:var(--muted); text-align:center; padding:15px 0; font-size:12px; }
+  .r-row{ display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--line); }
+  .r-line{ display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; padding:2px 0; }
+  .r-line.grand{ font-size:15px; font-weight:700; color:var(--ink); padding-top:4px; }
+
+  .r-footer-msg { text-align: center; font-size: 11px; color: var(--muted); margin-top: 10px; font-style: italic; }
+
+  .r-actions{ display:flex; gap:8px; margin-top:10px; }
+  .btn{ flex:1; border:none; border-radius:10px; padding:10px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-print{ background:linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%); color:#fff; box-shadow:0 6px 16px rgba(91,95,232,.4); }
+  .btn-print:disabled{ background:var(--line); color:var(--muted); cursor:not-allowed; box-shadow:none; }
+  .btn-sealed{ background:var(--red) !important; color:#fff !important; cursor:not-allowed; }
+  .btn-new{ background:var(--card-bg); color:var(--ink); border:1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+  /* ПАНЕЛЬ УПРАВЛЕНИЯ РЕДАКТИРОВАНИЕМ */
+  .edit-bar-banner {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,20,55,.55); color: #fff; padding: 12px 24px; border-radius: 50px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35); display: none; align-items: center; gap: 16px;
+    z-index: 10000; border: 1.5px solid rgba(124,127,247,.45); font-size: 13px;
+  }
+  .edit-bar-banner.show { display: flex; }
+  .btn-save-layout {
+    background: var(--green); color: #fff; border: none; padding: 8px 18px;
+    border-radius: 30px; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
+
+  .toast-notification {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+    background: rgba(30,20,55,.6); color: #fff; padding: 16px 24px; border-radius: 16px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    font-size: 14px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 20000; opacity: 0; pointer-events: none; transition: all 0.25s ease;
+    display: flex; align-items: center; gap: 10px; border: 1.5px solid rgba(124,127,247,.45);
+  }
+  .toast-notification.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  /* КОНТЕКСТНОЕ МЕНЮ ДЛЯ СМЕНЫ СТИКЕРА */
+  .custom-context-menu {
+    position: fixed; z-index: 10001; background: var(--card-bg); border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border-radius: 12px; box-shadow: 0 12px 30px rgba(124,127,247,.28); padding: 6px;
+    display: none; min-width: 230px; overflow: hidden;
+  }
+  .custom-context-menu.show { display: block; }
+  .custom-context-menu .menu-item {
+    padding: 11px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: 8px; display: flex; align-items: center; gap: 10px; color: var(--ink);
+  }
+  .custom-context-menu .menu-item:hover { background: var(--purple-soft); color: var(--purple); }
+  .custom-context-menu .menu-divider { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
+
+  .overlay{
+    position:fixed; inset:0; z-index:999; display:none; flex-direction:column; overflow-y:auto; color:var(--ink);
+    background: rgba(5,3,11,.82);
+    backdrop-filter: blur(30px) saturate(160%); -webkit-backdrop-filter: blur(30px) saturate(160%);
+  }
+  body.dark-theme .overlay{
+    background: rgba(2,1,8,.88);
+  }
+  .overlay.show{ display:flex; }
+  .fs-header{
+    background:var(--card-bg); border-bottom:1px solid var(--glass-border); padding:16px 28px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:5;
+  }
+  .fs-body{ padding:28px; max-width:1000px; width:100%; margin:0 auto; }  .setting-section {
+    background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; margin-bottom: 20px;
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    box-shadow: 0 8px 24px rgba(124,127,247,.10);
+  }
+  .setting-section h3 { margin-top: 0; color: var(--purple); font-size: 18px; }
+  
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+    font-family: inherit; font-size: 13px; background: var(--input-bg); color: var(--ink); outline: none;
+  }
+  .btn-action { background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%); color: #fff; padding: 10px 16px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow:0 6px 14px rgba(91,95,232,.35); }
+
+  /* ТАБЛИЦА ИСТОРИИ ЧЕКОВ */
+  .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .history-table th, .history-table td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+  .history-table th { background: var(--purple-soft); font-weight: 600; }
+
+  /* СТИЛИ ДЛЯ ПЕЧАТИ ЧЕКА */
+  @media print {
+    body * { visibility: hidden; }
+    #printableReceipt, #printableReceipt * { visibility: visible; }
+    #printableReceipt {
+      position: absolute; left: 0; top: 0; width: 80mm; padding: 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1.6; color: #000;
+    }
+  }
+
+  /* ===== КАСТОМНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ===== */
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(5,3,11,.12);
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .confirm-overlay.show{ opacity:1; pointer-events:auto; }
+  .confirm-box{
+    background:rgba(13,7,22,.32); color:var(--ink);
+    backdrop-filter: blur(28px) saturate(170%); -webkit-backdrop-filter: blur(28px) saturate(170%);
+    width:min(92vw,430px); border-radius:22px; padding:26px 24px 20px;
+    box-shadow:0 24px 60px rgba(40,20,70,.35), inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    transform:translateY(14px) scale(.96); transition:transform .2s cubic-bezier(.2,.9,.3,1.3);
+    text-align:center;
+  }
+  .confirm-overlay.show .confirm-box{ transform:translateY(0) scale(1); }
+  .confirm-icon{
+    width:62px; height:62px; margin:0 auto 14px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:30px;
+    background:rgba(239,68,68,.14);
+  }
+  .confirm-box.type-info .confirm-icon{ background:var(--purple-soft); }
+  .confirm-title{ font-family:'Fredoka',sans-serif; font-size:20px; font-weight:700; margin:0 0 8px; }
+  .confirm-text{ font-size:14.5px; color:var(--muted); line-height:1.5; margin:0 0 22px; }
+  .confirm-text b{ color:var(--ink); }
+  .confirm-actions{ display:flex; gap:10px; }
+  .confirm-actions button{
+    flex:1; padding:13px 10px; border-radius:14px; font-size:15px; font-weight:700;
+    font-family:'Inter',sans-serif; cursor:pointer; border:none; transition:.15s;
+  }
+  .confirm-cancel{ background:transparent; color:var(--ink); border:1.5px solid var(--line) !important; }
+  .confirm-cancel:hover{ background:var(--line); }
+  .confirm-ok{ background:var(--red); color:#fff; box-shadow:0 6px 16px rgba(239,68,68,.3); }
+  .confirm-ok:hover{ filter:brightness(1.08); }
+  .confirm-box.type-info .confirm-ok{ background:linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%); box-shadow:0 6px 16px rgba(124,127,247,.4); }
+
+/* ===== GLOBAL WATER BACKGROUND (живой на всех экранах) ===== */
+#globalWaterBg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:#05030b}
+#globalWaterBg .water-bg{position:absolute;inset:-20%;background:radial-gradient(circle at 20% 20%,rgba(255,40,150,.35),transparent 30%),radial-gradient(circle at 80% 30%,rgba(80,70,255,.4),transparent 34%),radial-gradient(circle at 45% 85%,rgba(190,0,255,.3),transparent 35%),linear-gradient(135deg,#05020b,#16051f 48%,#030516);filter:blur(2px);animation:waterMove 6s ease-in-out infinite alternate}
+#globalWaterBg .water-bg:before,#globalWaterBg .water-bg:after{content:'';position:absolute;width:75vw;height:75vw;border-radius:45% 55% 60% 40%;border:2px solid rgba(255,255,255,.09);box-shadow:0 0 80px rgba(185,30,255,.25),inset 0 0 70px rgba(255,0,160,.14);animation:liquid 7s linear infinite}
+#globalWaterBg .water-bg:after{width:55vw;height:55vw;animation-duration:9s;animation-direction:reverse;border-color:rgba(100,120,255,.14)}
+#globalWaterBg .water-dots{position:absolute;inset:0;pointer-events:none;opacity:.35;background-image:radial-gradient(circle,rgba(255,255,255,.32) 1px,transparent 1px);background-size:34px 34px;animation:dots 10s linear infinite}
+#globalWaterBg .water-blob{position:absolute;border-radius:50%;opacity:.45;mix-blend-mode:screen;filter:blur(60px)}
+#globalWaterBg .blob1{width:50vw;height:50vw;left:-10%;top:-10%;background:radial-gradient(circle,rgba(236,72,153,.9) 0%,transparent 70%);animation:blobDrift1 8s ease-in-out infinite}
+#globalWaterBg .blob2{width:55vw;height:55vw;right:-15%;top:5%;background:radial-gradient(circle,rgba(99,102,241,.85) 0%,transparent 70%);animation:blobDrift2 10s ease-in-out infinite;animation-delay:-3s}
+#globalWaterBg .blob3{width:45vw;height:45vw;left:15%;bottom:-15%;background:radial-gradient(circle,rgba(139,92,246,.85) 0%,transparent 70%);animation:blobDrift3 9s ease-in-out infinite;animation-delay:-6s}
+#globalWaterBg .blob4{width:40vw;height:40vw;right:5%;bottom:-10%;background:radial-gradient(circle,rgba(244,63,94,.7) 0%,transparent 70%);animation:blobDrift4 7s ease-in-out infinite;animation-delay:-1s}
+@keyframes blobDrift1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(8vw,6vh) scale(1.2)}66%{transform:translate(-4vw,10vh) scale(0.9)}}
+@keyframes blobDrift2{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(-10vw,8vh) scale(1.15)}70%{transform:translate(-3vw,-6vh) scale(0.85)}}
+@keyframes blobDrift3{0%,100%{transform:translate(0,0) scale(1)}35%{transform:translate(6vw,-8vh) scale(1.25)}68%{transform:translate(10vw,2vh) scale(0.88)}}
+@keyframes blobDrift4{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-8vw,-10vh) scale(1.3)}}
+
+/* ===== LOGIN WATER BACKGROUND (4 animated layers) ===== */
+#firdavsLogin .login-water-bg{position:absolute;inset:0;overflow:hidden;z-index:0;background:#05030b}
+#firdavsLogin .lw-layer{position:absolute;border-radius:50%;filter:blur(80px);opacity:.42;mix-blend-mode:screen;will-change:transform}
+#firdavsLogin .lw-layer-1{width:70vw;height:70vw;left:-15%;top:-10%;background:radial-gradient(circle,rgba(236,72,153,.9) 0%,transparent 70%);animation:lwDrift1 9s ease-in-out infinite alternate}
+#firdavsLogin .lw-layer-2{width:65vw;height:65vw;right:-20%;top:-5%;background:radial-gradient(circle,rgba(99,102,241,.85) 0%,transparent 70%);animation:lwDrift2 12s ease-in-out infinite alternate;animation-delay:-3s}
+#firdavsLogin .lw-layer-3{width:60vw;height:60vw;left:10%;bottom:-20%;background:radial-gradient(circle,rgba(139,92,246,.85) 0%,transparent 70%);animation:lwDrift3 10s ease-in-out infinite alternate;animation-delay:-6s}
+#firdavsLogin .lw-layer-4{width:55vw;height:55vw;right:5%;bottom:-15%;background:radial-gradient(circle,rgba(244,63,94,.7) 0%,transparent 70%);animation:lwDrift4 8s ease-in-out infinite alternate;animation-delay:-1s}
+#firdavsLogin .lw-noise{position:absolute;inset:0;pointer-events:none;opacity:.22;z-index:1;background-image:repeating-linear-gradient(115deg,rgba(255,255,255,.02) 0px,transparent 2px,transparent 4px),repeating-linear-gradient(25deg,rgba(255,255,255,.016) 0px,transparent 2px,transparent 5px)}
+@keyframes lwDrift1{0%{transform:translate(0,0) scale(1) rotate(0deg)}50%{transform:translate(10vw,8vh) scale(1.22) rotate(18deg)}100%{transform:translate(-6vw,14vh) scale(.88) rotate(-12deg)}}
+@keyframes lwDrift2{0%{transform:translate(0,0) scale(1) rotate(0deg)}50%{transform:translate(-14vw,11vh) scale(1.18) rotate(-22deg)}100%{transform:translate(10vw,-8vh) scale(.92) rotate(14deg)}}
+@keyframes lwDrift3{0%{transform:translate(0,0) scale(1) rotate(0deg)}50%{transform:translate(10vw,-12vh) scale(1.28) rotate(20deg)}100%{transform:translate(-12vw,6vh) scale(.85) rotate(-18deg)}}
+@keyframes lwDrift4{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-10vw,-14vh) scale(1.32)}100%{transform:translate(8vw,10vh) scale(.88)}}
+
+/* ===== FIRDAVS NEON LOGIN / LOCK ===== */
+body.login-locked > *:not(#firdavsLogin){display:none !important}
+#firdavsLogin{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent;color:#fff;font-family:'Inter',sans-serif}
+
+
+
+@keyframes waterMove{from{transform:scale(1) rotate(-3deg) translate(0,0)}to{transform:scale(1.14) rotate(5deg) translate(2%,-2%)}}
+@keyframes liquid{0%{transform:translate(-18%,10%) rotate(0deg)}50%{transform:translate(18%,-8%) rotate(180deg)}100%{transform:translate(-18%,10%) rotate(360deg)}}
+#firdavsLogin .login-orb{position:relative;z-index:2;width:min(590px,92vw);min-height:570px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#ff3c93,#a900ff 48%,#345cff);box-shadow:0 0 35px rgba(255,0,170,.35),0 0 100px rgba(91,50,255,.25);animation:orbFloat 5s ease-in-out infinite}
+@keyframes orbFloat{50%{transform:translateY(-7px)}}
+#firdavsLogin .login-card{position:absolute;inset:3px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:70px 90px;background:rgba(13,7,22,.78);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);box-shadow:inset 0 0 60px rgba(255,255,255,.025)}
+#firdavsLogin h1{font-family:'Fredoka',sans-serif;font-size:40px;margin:0 0 2px;text-shadow:0 0 18px rgba(255,255,255,.18)}
+#firdavsLogin .login-sub{font-size:12px;color:rgba(255,255,255,.58);margin-bottom:32px}
+#firdavsLogin .login-field{width:100%;height:58px;margin:7px 0;position:relative}
+#firdavsLogin input{width:100%;height:100%;border-radius:30px;border:1px solid rgba(255,255,255,.14);outline:none;background:rgba(255,255,255,.045);color:#fff;padding:0 48px 0 52px;font-size:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:.25s}
+#firdavsLogin input:focus{border-color:rgba(206,60,255,.75);box-shadow:0 0 22px rgba(188,40,255,.18),inset 0 1px 0 rgba(255,255,255,.06)}
+#firdavsLogin .field-icon{position:absolute;left:21px;top:50%;transform:translateY(-50%);opacity:.7;font-size:18px}
+#firdavsLogin .eye{position:absolute;right:18px;top:50%;transform:translateY(-50%);cursor:pointer;opacity:.65}
+#firdavsLogin .login-row{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:rgba(255,255,255,.65);margin:8px 0 17px}
+#firdavsLogin .remember{display:flex;align-items:center;gap:7px;cursor:pointer}
+#firdavsLogin .remember input{width:15px;height:15px;padding:0;accent-color:#d02cff}
+#firdavsLogin .forgot{color:#d85cff}
+#firdavsLogin .login-submit{width:100%;height:57px;border:0;border-radius:30px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;background:linear-gradient(100deg,#ff1d83,#b900ff 52%,#315fff);box-shadow:0 10px 30px rgba(211,0,255,.28);transition:.22s}
+#firdavsLogin .login-submit:hover{transform:translateY(-2px);filter:brightness(1.12)}
+#firdavsLogin .login-error{height:18px;color:#ff6d9f;font-size:12px;margin-top:8px;text-align:center;opacity:0;transition:.2s}
+#firdavsLogin .login-error.show{opacity:1}
+#firdavsLogin .login-shake{animation:shake .38s}
+@keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-5px)}}
+
+@keyframes dots{to{background-position:160px 110px}}
+body.app-visible .top,body.app-visible .main-canvas{animation:appIn .55s ease both}
+@keyframes appIn{from{opacity:0;filter:blur(8px);transform:scale(.985)}to{opacity:1;filter:none;transform:none}}
+/* Make the main program visually belong to the same neon-glass family */
+body.app-visible header.top{background:linear-gradient(100deg,rgba(255,35,150,.12),rgba(157,30,255,.12),rgba(45,90,255,.12));border-color:rgba(205,95,255,.28);box-shadow:0 10px 40px rgba(91,20,180,.22),inset 0 1px 0 rgba(255,255,255,.08)}
+body.app-visible .card,body.app-visible .tabbtn,body.app-visible .receipt-shell{box-shadow:0 10px 30px rgba(109,35,220,.14),inset 0 1px 0 rgba(255,255,255,.04)}
+@media(max-width:650px){#firdavsLogin .login-orb{width:94vw;min-height:520px}#firdavsLogin .login-card{padding:60px 45px}#firdavsLogin h1{font-size:32px}}
+</style></head>
+
+<body class="login-locked">
+<div id="globalWaterBg">
+  <div class="water-bg"></div>
+  <div class="water-dots"></div>
+  <div class="water-blob blob1"></div>
+  <div class="water-blob blob2"></div>
+  <div class="water-blob blob3"></div>
+  <div class="water-blob blob4"></div>
+</div>
+<!-- FIRDAVS LOGIN -->
+<div id="firdavsLogin" aria-hidden="false">
+  <div class="login-water-bg">
+    <div class="lw-layer lw-layer-1"></div>
+    <div class="lw-layer lw-layer-2"></div>
+    <div class="lw-layer lw-layer-3"></div>
+    <div class="lw-layer lw-layer-4"></div>
+    <div class="lw-noise"></div>
+  </div>
+  <div class="login-orb" id="loginOrb">
+    <div class="login-card">
+      <h1>Login</h1><div class="login-sub">Please sign in to continue</div>
+      <div class="login-field"><span class="field-icon">♙</span><input id="firdavsUser" autocomplete="username" placeholder="Username"></div>
+      <div class="login-field"><span class="field-icon">♙</span><input id="firdavsPass" type="password" autocomplete="current-password" placeholder="Password"><span class="eye" id="firdavsEye">◉</span></div>
+      <div class="login-row"><label class="remember"><input id="firdavsRemember" type="checkbox" checked> Remember me</label><span class="forgot">Forgot password?</span></div>
+      <button class="login-submit" id="firdavsLoginBtn">Login <span style="float:right;margin-right:20px">→</span></button>
+      <div class="login-error" id="firdavsError">Неверный username или password</div>
+    </div>
+  </div>
+</div>
+
+
+<input type="file" id="filePicker" accept="image/*" style="display:none;" />
+
+<div class="custom-context-menu" id="customContextMenu">
+  <div class="menu-item" id="menuChangeToImage">🖼️ Изменить стикер на рисунок</div>
+  <hr class="menu-divider">
+  <div class="menu-item" id="menuResetToSticker">↩️ Вернуть обычный стикер</div>
+</div>
+
+<div class="toast-notification" id="toastMsg">
+  <span>✅</span> <span id="toastText">Сохранено!</span>
+</div>
+
+<div class="edit-bar-banner" id="editBarBanner">
+  <span>🖱️ <b>Конструктор экрана:</b> Тяните блок за угол, чтобы изменить размер! <b>ПКМ по значку или по блюду</b> — сменить на рисунок!</span>
+  <button class="btn-save-layout" id="saveLayoutBtn">💾 Сохранить макет</button>
+</div>
+
+<header class="top">
+  <div class="brand-wrap">
+    <input class="brand-name" id="brandName" value="🍔 МОЁ КАФЕ / МЕНЮ" />
+    <input class="brand-sub" id="brandSub" value="г. Ташкент, ул. Центральная, 10" />
+  </div>
+  <button class="header-btn" id="openHistoryBtn">📜 История чеков</button>
+  <button class="header-btn" id="themeToggleBtn">🌙 Тёмная</button>
+  <button class="header-btn" id="firdavsLockBtn">🔒 Блокировка</button>
+  <button class="header-btn" id="openSettingsBtn">⚙️ Настройки</button>
+</header>
+
+<div class="main-canvas" id="mainCanvas">
+
+  <!-- Блок: Прибыль -->
+  <div class="drag-block" id="block_profit" style="left: 28px; top: 24px; width: 200px; height: 65px;">
+    <div class="profit-card" id="profitBtn">
+      <div class="p-title">📈 Прибыль за сегодня</div>
+      <div class="p-val" id="todayProfitVal">0 сум</div>
+    </div>
+  </div>
+
+  <!-- Кнопки Категорий -->
+  <div class="drag-block" id="block_cat_burgers" style="left: 250px; top: 24px; width: 140px; height: 45px;">
+    <button class="tabbtn active" onclick="switchCategory('burgers', this)">
+      <span class="icon-wrap">🍔</span> <span>Бургеры</span>
+    </button>
+  </div>
+
+  <div class="drag-block" id="block_cat_hotdogs" style="left: 405px; top: 24px; width: 140px; height: 45px;">
+    <button class="tabbtn" onclick="switchCategory('hotdogs', this)">
+      <span class="icon-wrap">🌭</span> <span>Хот-доги</span>
+    </button>
+  </div>
+
+  <div class="drag-block" id="block_cat_shashlik" style="left: 560px; top: 24px; width: 140px; height: 45px;">
+    <button class="tabbtn" onclick="switchCategory('shashlik', this)">
+      <span class="icon-wrap">🥩</span> <span>Шашлык</span>
+    </button>
+  </div>
+
+  <div class="drag-block" id="block_cat_samsa" style="left: 715px; top: 24px; width: 120px; height: 45px;">
+    <button class="tabbtn" onclick="switchCategory('samsa', this)">
+      <span class="icon-wrap">🥟</span> <span>Самса</span>
+    </button>
+  </div>
+
+  <div class="drag-block" id="block_cat_lavash" style="left: 850px; top: 24px; width: 120px; height: 45px;">
+    <button class="tabbtn" onclick="switchCategory('lavash', this)">
+      <span class="icon-wrap">🌯</span> <span>Лаваш</span>
+    </button>
+  </div>
+
+  <!-- Блок: Сетка Блюд (Ячейки) -->
+  <div class="drag-block" id="block_grid" style="left: 28px; top: 100px; width: 600px; height: 400px;">
+    <h2 id="catTitle" style="margin-top:0; margin-bottom:12px;">🍔 Бургеры</h2>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- Блок: Кассовый Чек -->
+  <div class="drag-block" id="block_receipt" style="left: 650px; top: 100px; width: 380px; height: 530px;">
+    <div class="receipt-shell" id="receiptShell">
+      <div class="r-brand" id="receiptBrandDisplay">МОЁ КАФЕ</div>
+      <div class="r-sub" id="receiptAddressDisplay">г. Ташкент, ул. Центральная, 10</div>
+      <div class="r-datetime" id="receiptDateTime">--.--.----, --:--</div>
+      <hr class="r-divider">
+
+      <div class="client-inputs-box">
+        <input type="number" id="inputTableNum" placeholder="🪑 Стол № *" />
+        <input type="text" id="inputClientName" placeholder="👤 Имя Фамилия *" />
+        <input type="text" id="inputClientPhone" placeholder="📞 Телефон *" style="grid-column: span 2;" />
+      </div>
+
+      <div class="required-warn" id="requiredWarn">⚠️ ОБЯЗАТЕЛЬНО ЗАПОЛНИТЕ ЭТИ МЕСТА: стол, имя фамилия, телефон!</div>
+
+      <div class="client-summary" id="clientSummary"></div>
+
+      <hr class="r-divider">
+      <div class="r-items" id="rItems">
+        <div class="r-empty">Чек пуст.<br>Нажмите на позицию слева.</div>
+      </div>
+
+      <div id="rTotalsWrap" style="display:none;">
+        <hr class="r-divider">
+        <div class="r-line"><span>Сумма:</span><span id="rSubTotal">0 сум</span></div>
+        <div class="r-line" style="color:var(--orange-dark);"><span>Обслуживание (10%):</span><span id="rServiceTotal">0 сум</span></div>
+        <hr class="r-divider">
+        <div class="r-line grand"><span>Итого:</span><span id="rTotal">0 сум</span></div>
+        <div class="r-footer-msg">
+          Спасибо за визит!<br>Будем рады видеть вас снова!
+        </div>
+      </div>
+
+      <div class="r-actions">
+        <button class="btn btn-new" id="newOrderBtn">🗑 Новый чек</button>
+        <button class="btn btn-print" id="printBtn" disabled>🖨 Печать / Пробить</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ИЗНОЧАЛЬНО СКРЫТЫЙ БЛОК ДЛЯ ФИЗИЧЕСКОЙ ПЕЧАТИ ЧЕКА -->
+<div id="printableReceipt" style="display:none;"></div>
+
+<!-- ОВЕРЛЕЙ ГРАФИКА ПРИБЫЛИ -->
+<div class="overlay" id="profitOverlay">
+  <div class="fs-header">
+    <h2>📈 Прибыль и статистика</h2>
+    <button class="btn" style="width:auto; background:var(--purple); color:#fff;" id="closeProfitBtn">✕ Закрыть</button>
+  </div>
+  <div class="fs-body">
+    <div class="setting-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <h3 style="margin:0;">Динамика прибыли (последние 7 дней)</h3>
+        <div id="profitTrendBadge" style="font-weight:700; padding:8px 14px; border-radius:20px; font-size:13px;"></div>      </div>
+      <div id="profitChartWrap" style="width:100%; overflow-x:auto;"></div>
+    </div>
+    <div class="setting-section">
+      <h3>Сводка</h3>
+      <div id="profitSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ОВЕРЛЕЙ ИСТОРИИ ЧЕКОВ (с ПОИСКОМ ПО ПЕРИОДУ ДАТ) -->
+<div class="overlay" id="historyOverlay">
+  <div class="fs-header">
+    <h2>📜 История чеков (History Check)</h2>
+    <button class="btn" style="width:auto; background:var(--purple); color:#fff;" id="closeHistoryBtn">✕ Закрыть</button>
+  </div>
+  <div class="fs-body">
+    <div class="setting-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom: 16px;">
+        <h3>История пробитых заказов</h3>
+        <button class="btn-action" style="background:var(--red);" id="clearHistoryBtn">🗑 Очистить историю</button>
+      </div>
+
+      <!-- Фильтр от и до даты -->
+      <div style="display:flex; gap:12px; align-items:center; background:var(--purple-soft); padding:12px; border-radius:12px; margin-bottom:16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+        <label style="font-weight:600; font-size:13px;">📅 Поиск с:</label>
+        <input type="date" id="filterStartDate" style="padding:6px; border-radius:6px; border:1px solid var(--line);" />
+        <label style="font-weight:600; font-size:13px;">по:</label>
+        <input type="date" id="filterEndDate" style="padding:6px; border-radius:6px; border:1px solid var(--line);" />
+        <button class="btn-action" id="applyDateFilterBtn">🔍 Найти</button>
+        <button class="btn-action" id="resetDateFilterBtn" style="background:var(--muted);">🔄 Сбросить</button>
+      </div>
+
+      <div style="font-weight:700; margin-bottom:10px; color:var(--purple);" id="historyPeriodProfit">Выручка за период: 0 сум</div>
+
+      <div style="overflow-x:auto;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Дата и Время</th>
+              <th>Стол</th>
+              <th>Клиент</th>
+              <th>Телефон</th>
+              <th>Блюда</th>
+              <th>Обслуживание (10%)</th>
+              <th>Итого</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <!-- История загружается через JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ОВЕРЛЕЙ НАСТРОЕК -->
+<div class="overlay" id="settingsOverlay">
+  <div class="fs-header">
+    <h2>⚙️ Настройки кассы и меню</h2>
+    <button class="btn" style="width:auto; background:var(--purple); color:#fff;" id="closeSettingsBtn">✕ Закрыть</button>
+  </div>
+  <div class="fs-body">
+    
+    <!-- СЕКЦИЯ 1: КОНСТРУКТОР ТРАНСФОРМАЦИИ -->
+    <div class="setting-section" style="background: linear-gradient(135deg, rgba(124,127,247,0.22) 0%, rgba(91,95,232,0.16) 100%); border: 2px solid var(--purple);">
+      <h3>🎨 Конструктор экрана (Размеры и Расположение)</h3>
+      <p style="font-size:14px; color:var(--muted);">Нажмите кнопку ниже, чтобы войти в режим свободной трансформации. Вы сможете перетаскивать блоки мышкой, менять их размер за углы, заменять иконки категорий и блюд на свои картинки через Правый Клик Мыши!</p>
+      <button class="btn" style="background:var(--purple); color:#fff; font-size:15px; padding:14px; width:100%; border-radius:12px;" id="startCanvaModeBtn">
+        🖱️ Открыть Конструктор Экрана
+      </button>
+    </div>
+
+    <!-- СЕКЦИЯ 2: НАСТРОЙКА ЯЧЕЕК И КАТЕГОРИЙ -->
+    <div class="setting-section">
+      <h3>📁 Настройка Категорий и Блюд (Ячеек)</h3>
+      
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Добавление Категории -->
+        <div style="background: var(--purple-soft); padding:14px; border-radius:12px; border:1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+          <h4 style="margin-top:0;">1. Добавить новую категорию</h4>
+          <div class="form-group">
+            <label>Название категории:</label>
+            <input type="text" id="newCatName" placeholder="Например: Напитки" />
+          </div>
+          <div class="form-group">
+            <label>Эмодзи или иконка:</label>
+            <input type="text" id="newCatIcon" placeholder="🥤" value="🥤" />
+          </div>
+          <button class="btn-action" id="addCategoryBtn" style="width:100%;">➕ Создать категорию</button>
+        </div>
+
+        <!-- Добавление Ячейки Блюда -->
+        <div style="background: var(--purple-soft); padding:14px; border-radius:12px; border:1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+          <h4 style="margin-top:0;">2. Добавить блюдо (ячейку)</h4>
+          <div class="form-group">
+            <label>Выберите категорию:</label>
+            <select id="selectCatForDish"></select>
+          </div>
+          <div class="form-group">
+            <label>Название блюда:</label>
+            <input type="text" id="newDishName" placeholder="Например: Кока-кола 0.5" />
+          </div>
+          <div class="form-group">
+            <label>Цена (сум):</label>
+            <input type="number" id="newDishPrice" placeholder="10000" />
+          </div>
+          <div class="form-group">
+            <label>Стикер (подбирается автоматически):</label>
+            <input type="text" id="newDishIcon" placeholder="🍽️" />
+          </div>
+          <button class="btn-action" id="addDishBtn" style="width:100%; background:var(--orange);">➕ Добавить блюдо в сетку</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- СЕКЦИЯ 3: УДАЛЕНИЕ -->
+    <div class="setting-section">
+      <h3>🗑 Удаление категорий и ячеек</h3>
+      <p style="font-size:13px; color:var(--muted); margin-top:0;">Удалить можно любую категорию и любую ячейку блюда, включая созданные вами.</p>
+      <div id="manageListWrap"></div>
+    </div>
+
+
+    <!-- СЕКЦИЯ: ИЗМЕНЕНИЕ ЛОГИНА И ПАРОЛЯ -->
+    <div class="setting-section">
+      <h3>🔐 Логин и пароль от кассы</h3>
+      <p style="font-size:14px; color:var(--muted);">Здесь можно сменить логин и пароль, которые используются для входа в приложение (экран Login).</p>
+      <button class="btn" style="background:var(--purple); color:#fff; font-size:15px; padding:14px; width:100%; border-radius:12px;" id="openAuthChangeBtn">
+        🔐 Изменить логин и пароль
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- КАСТОМНОЕ ОКНО ПОДТВЕРЖДЕНИЯ -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box" id="confirmBox">
+    <div class="confirm-icon" id="confirmIcon">🗑️</div>
+    <h3 class="confirm-title" id="confirmTitle">Удалить?</h3>
+    <p class="confirm-text" id="confirmText"></p>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" id="confirmCancelBtn">Отмена</button>
+      <button class="confirm-ok" id="confirmOkBtn">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>/* ===== ПРОМИС-ОКНО ПОДТВЕРЖДЕНИЯ (замена confirm) ===== */
+let _confirmResolve = null;
+function askConfirm(opts) {
+  const o = typeof opts === 'string' ? { text: opts } : (opts || {});
+  const overlay = document.getElementById('confirmOverlay');
+  const box = document.getElementById('confirmBox');
+  document.getElementById('confirmIcon').textContent = o.icon || '🗑️';
+  document.getElementById('confirmTitle').textContent = o.title || 'Вы уверены?';
+  document.getElementById('confirmText').innerHTML = o.text || '';
+  document.getElementById('confirmOkBtn').textContent = o.okText || 'Удалить';
+  document.getElementById('confirmCancelBtn').textContent = o.cancelText || 'Отмена';
+  box.classList.toggle('type-info', o.type === 'info');
+  overlay.classList.add('show');
+  setTimeout(() => document.getElementById('confirmCancelBtn').focus(), 60);
+  return new Promise(resolve => { _confirmResolve = resolve; });
+}
+function closeConfirm(result) {
+  const overlay = document.getElementById('confirmOverlay');
+  if (!overlay.classList.contains('show')) return;
+  overlay.classList.remove('show');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
+document.getElementById('confirmOkBtn').onclick = () => closeConfirm(true);
+document.getElementById('confirmCancelBtn').onclick = () => closeConfirm(false);
+document.getElementById('confirmOverlay').addEventListener('click', e => {
+  if (e.target.id === 'confirmOverlay') closeConfirm(false);
+});
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('confirmOverlay').classList.contains('show')) return;
+  if (e.key === 'Escape') closeConfirm(false);
+  if (e.key === 'Enter') closeConfirm(true);
+});
+
+function showToast(msg) {
+  const toast = document.getElementById('toastMsg');
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); }, 2200);
+}
+
+/* БЕЗОПАСНОЕ СОХРАНЕНИЕ (localStorage может переполниться из-за картинок) */
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    showToast('Память браузера переполнена — картинка не сохранена. Удалите часть фото.');
+    return false;
+  }
+}
+
+/* СЖАТИЕ КАРТИНКИ ПЕРЕД СОХРАНЕНИЕМ */
+function readImageCompressed(file, maxSide, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const raw = e.target.result;
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      const scale = Math.min(1, maxSide / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        callback(canvas.toDataURL('image/jpeg', 0.82));
+      } catch (err) {
+        callback(raw);
+      }
+    };
+    img.onerror = function() { callback(raw); };
+    img.src = raw;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ДАННЫЕ И ТЕМА */
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let currentTheme = localStorage.getItem('app_theme') || 'light';
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.body.classList.add('dark-theme');
+    themeToggleBtn.innerHTML = '☀️ Светлая';
+  } else {
+    document.body.classList.remove('dark-theme');
+    themeToggleBtn.innerHTML = '🌙 Тёмная';
+  }
+  localStorage.setItem('app_theme', theme);
+}
+themeToggleBtn.onclick = () => { currentTheme = (currentTheme === 'light') ? 'dark' : 'light'; applyTheme(currentTheme); };
+applyTheme(currentTheme);
+
+/* ОБНОВЛЕНИЕ БРЕНДА И АДРЕСА */
+const brandNameInput = document.getElementById('brandName');
+const brandSubInput = document.getElementById('brandSub');
+brandNameInput.oninput = () => document.getElementById('receiptBrandDisplay').textContent = brandNameInput.value;
+brandSubInput.oninput = () => document.getElementById('receiptAddressDisplay').textContent = brandSubInput.value;
+
+/* АВТОПОДБОР СТИКЕРА ПО НАЗВАНИЮ */
+const EMOJI_MAP = [
+  [['торт','tort','чизкейк','десерт'], '🎂'],
+  [['пирожн','кекс','маффин','капкейк'], '🧁'],
+  [['мороже','пломбир','muzqaymoq'], '🍦'],
+  [['шокола','shokolad'], '🍫'],
+  [['конфет','карамель'], '🍬'],
+  [['печен','pechene','курабье'], '🍪'],
+  [['блин','оладь','панкейк'], '🥞'],
+  [['мёд','мед ','asal'], '🍯'],
+  [['кофе','kofe','эспрессо','капучино','латте'], '☕'],
+  [['чай','choy'], '🍵'],
+  [['сок','soku','fresh'], '🧃'],
+  [['кола','пепси','фанта','спрайт','газиров','лимонад'], '🥤'],
+  [['вода','suv','минерал'], '💧'],
+  [['молок','айран','кефир','sut'], '🥛'],
+  [['пиво','pivo'], '🍺'],
+  [['вино','шампан'], '🍷'],  [['бургер','burger','чизбург','гамбург'], '🍔'],
+  [['хот-дог','хотдог','сосиск','hot dog'], '🌭'],
+  [['пицц','pitsa'], '🍕'],
+  [['шаурма','шаверма','донер','лаваш','кебаб','кабоб','твистер'], '🌯'],
+  [['шашлык','шашлик','kabob','люля'], '🍢'],
+  [['самса','somsa'], '🥟'],
+  [['манты','манти','пельмен','чучвара','хинкали','вареник'], '🥟'],
+  [['плов','palov','osh','рис','гуруч'], '🍚'],
+  [['лагман','суп','шурпа','мастава','лапш','рамен','мошхурда'], '🍜'],
+  [['макарон','паста','спагет','болонез'], '🍝'],
+  [['салат','салад','цезарь','ачичук'], '🥗'],
+  [['хлеб','нон','лепёшк','лепешк','багет','тост'], '🍞'],
+  [['сэндвич','бутерброд','сендвич'], '🥪'],
+  [['картош','фри','наггетс'], '🍟'],
+  [['кури','tovuq','крыл','гриль'], '🍗'],
+  [['мясо','говяд','баран','стейк','гушт'], '🥩'],
+  [['рыб','балык','форел','лосос'], '🐟'],
+  [['суши','ролл','сашими'], '🍣'],
+  [['сыр','брынза','pishloq'], '🧀'],
+  [['яйц','омлет','tuxum','глазунь'], '🍳'],
+  [['попкорн','кукуруз'], '🍿'],
+  [['орех','фисташ','миндал','арахис'], '🥜'],
+  [['яблок','olma'], '🍎'],
+  [['банан'], '🍌'],
+  [['виноград','узум'], '🍇'],
+  [['арбуз','tarvuz'], '🍉'],
+  [['дын','qovun'], '🍈'],
+  [['клубник','ягод'], '🍓'],
+  [['лимон'], '🍋'],
+  [['апельсин','мандарин','цитрус'], '🍊'],
+  [['каша','мюсли','овсян'], '🥣']
+];
+
+function guessEmoji(text) {
+  const t = (text || '').toLowerCase().trim();
+  if (!t) return '';
+  for (const pair of EMOJI_MAP) {
+    if (pair[0].some(w => t.includes(w))) return pair[1];
+  }
+  return '';
+}
+
+/* МЕНЮ И ЯЧЕИКИ */
+const DEFAULT_MENU = {
+  burgers: { name: 'Бургеры', icon: '🍔', items: [{ name: 'Чизбургер', price: 25000 }, { name: 'Гамбургер', price: 22000 }] },
+  hotdogs: { name: 'Хот-доги', icon: '🌭', items: [{ name: 'Классический хот-дог', price: 18000 }] },
+  shashlik: { name: 'Шашлык', icon: '🥩', items: [{ name: 'Молотый шашлык', price: 16000 }] },
+  samsa: { name: 'Самса', icon: '🥟', items: [{ name: 'Самса', price: 12000 }] },
+  lavash: { name: 'Лаваш', icon: '🌯', items: [{ name: 'Сочный Лаваш', price: 28000 }] }
+};
+let menu = JSON.parse(localStorage.getItem('my_menu_v3')) || DEFAULT_MENU;
+let activeCatId = 'burgers';
+let currentOrder = [];
+let isOrderSealed = false; // Статус запечатанного чека
+let receiptHistory = JSON.parse(localStorage.getItem('receipt_history_v1')) || [];
+
+/* МИГРАЦИЯ: старую категорию "Самса и Лаваш" делим на две отдельные */
+function splitSamsaAndLavash() {
+  const cat = menu['samsa'];
+  if (!cat || !/лаваш/i.test(cat.name)) return;
+
+  cat.name = 'Самса';
+  cat.icon = cat.icon || '🥟';
+
+  if (!menu['lavash']) {
+    menu['lavash'] = { name: 'Лаваш', icon: '🌯', items: [] };
+  }
+
+  const stay = [], moved = [];
+  (cat.items || []).forEach(it => {
+    (/лаваш/i.test(it.name) ? moved : stay).push(it);
+  });
+  cat.items = stay;
+  menu['lavash'].items = (menu['lavash'].items || []).concat(moved);
+
+  safeSetItem('my_menu_v3', JSON.stringify(menu));
+}
+
+/* РАЗОВЫЙ СБРОС: у категории "Самса" возвращаем стикер вместо картинки */
+function resetSamsaToSticker() {
+  if (localStorage.getItem('samsa_sticker_reset_v1')) return;
+
+  if (menu['samsa'] && Array.isArray(menu['samsa'].items)) {
+    menu['samsa'].items.forEach(it => { delete it.image; });
+    safeSetItem('my_menu_v3', JSON.stringify(menu));
+  }
+
+  if (layoutData['block_cat_samsa']) {
+    layoutData['block_cat_samsa'].iconImg = null;
+    safeSetItem('my_layout_data', JSON.stringify(layoutData));
+  }
+
+  localStorage.setItem('samsa_sticker_reset_v1', '1');
+}
+
+/* СПИСОК УДАЛЕНИЯ КАТЕГОРИЙ И ЯЧЕЕК */
+function getCategoryBlock(catKey) {
+  return document.getElementById('block_cat_' + catKey) || document.getElementById('block_' + catKey);
+}
+
+function renderManageList() {
+  const wrap = document.getElementById('manageListWrap');
+  wrap.innerHTML = '';
+  const keys = Object.keys(menu);
+
+  if (!keys.length) {
+    wrap.innerHTML = '<div style="font-size:13px; color:var(--muted);">Категорий пока нет.</div>';
+    return;
+  }
+
+  keys.forEach(key => {
+    const cat = menu[key];
+    const box = document.createElement('div');
+    box.className = 'manage-cat';
+
+    const head = document.createElement('div');
+    head.className = 'manage-cat-head';
+    head.innerHTML = `<b>${cat.icon} ${cat.name}</b>`;
+    const delCatBtn = document.createElement('button');
+    delCatBtn.className = 'btn-del';
+    delCatBtn.textContent = '🗑 Удалить категорию';
+    delCatBtn.onclick = () => deleteCategory(key);
+    head.appendChild(delCatBtn);
+    box.appendChild(head);
+
+    if (!cat.items || !cat.items.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:12px; color:var(--muted);';
+      empty.textContent = 'Ячеек нет.';
+      box.appendChild(empty);
+    } else {
+      cat.items.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'manage-dish';
+        row.innerHTML = `<span>${item.icon || cat.icon} ${item.name} — ${item.price.toLocaleString()} сум</span>`;
+        const delDishBtn = document.createElement('button');
+        delDishBtn.className = 'btn-del';
+        delDishBtn.textContent = '✕ Удалить';
+        delDishBtn.onclick = () => deleteDish(key, idx);
+        row.appendChild(delDishBtn);
+        box.appendChild(row);
+      });
+    }
+
+    wrap.appendChild(box);
+  });
+}
+
+async function deleteDish(catKey, index) {
+  const cat = menu[catKey];
+  if (!cat || !cat.items[index]) return;
+  const ok = await askConfirm({
+    title: 'Удалить ячейку?',
+    text: `Ячейка <b>${cat.items[index].name}</b> будет удалена безвозвратно.`
+  });
+  if (!ok) return;
+
+  const dishName = cat.items[index].name;
+  cat.items.splice(index, 1);
+  saveMenuToStorage();
+  renderManageList();
+  showToast(`✅ Ячейка "${dishName}" успешно удалена`);
+}
+
+async function deleteCategory(catKey) {
+  const cat = menu[catKey];
+  if (!cat) return;
+  const count = (cat.items || []).length;
+  const ok = await askConfirm({
+    title: 'Удалить категорию?',
+    text: `Категория <b>${cat.name}</b> и все её ячейки (${count}) будут удалены безвозвратно.`,
+    okText: 'Да, удалить'
+  });
+  if (!ok) return;
+
+  const catName = cat.name;
+  delete menu[catKey];
+
+  const block = getCategoryBlock(catKey);
+  if (block) {
+    delete layoutData[block.id];
+    safeSetItem('my_layout_data', JSON.stringify(layoutData));
+    block.remove();
+  }
+
+  if (activeCatId === catKey) {
+    activeCatId = Object.keys(menu)[0] || null;
+    document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+    const nextBlock = activeCatId ? getCategoryBlock(activeCatId) : null;    if (nextBlock) {
+      const btn = nextBlock.querySelector('.tabbtn');
+      if (btn) btn.classList.add('active');
+    }
+  }
+
+  saveMenuToStorage();
+  renderManageList();
+  showToast(`✅ Категория "${catName}" успешно удалена`);
+}
+
+function saveMenuToStorage() {
+  safeSetItem('my_menu_v3', JSON.stringify(menu));
+  updateCategorySelectOptions();
+  renderGrid(); // перерисовываем всегда, даже если сохранение не прошло
+}
+
+function updateCategorySelectOptions() {
+  const select = document.getElementById('selectCatForDish');
+  select.innerHTML = '';
+  Object.keys(menu).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = `${menu[key].icon} ${menu[key].name}`;
+    select.appendChild(opt);
+  });
+}
+
+/* --- РЕСАЙЗ И ДРАГ-ЭНД-ДРОП --- */
+let isEditMode = false;
+let layoutData = JSON.parse(localStorage.getItem('my_layout_data')) || {};
+
+function applySavedLayout() {
+  Object.keys(layoutData).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (layoutData[id].left) el.style.left = layoutData[id].left;
+      if (layoutData[id].top) el.style.top = layoutData[id].top;
+      if (layoutData[id].width) el.style.width = layoutData[id].width;
+      if (layoutData[id].height) el.style.height = layoutData[id].height;
+      if (layoutData[id].iconImg) {
+        const iconWrap = el.querySelector('.icon-wrap');
+        if (iconWrap) {
+          iconWrap.innerHTML = `<img src="${layoutData[id].iconImg}" class="custom-icon">`;
+          iconWrap.classList.add('icon-fill');
+        }
+        const btnEl = el.querySelector('.tabbtn');
+        if (btnEl) btnEl.classList.add('has-bg-image');
+      }
+    }
+  });
+}
+
+function saveLayout() {
+  document.querySelectorAll('.drag-block').forEach(b => {
+    const iconImg = b.querySelector('.custom-icon');
+    layoutData[b.id] = {
+      left: b.style.left, top: b.style.top,
+      width: b.style.width, height: b.style.height,
+      iconImg: iconImg ? iconImg.src : null
+    };
+  });
+  safeSetItem('my_layout_data', JSON.stringify(layoutData));
+}
+
+function initCanvaEngine() {
+  document.querySelectorAll('.drag-block').forEach(block => {
+    if (block.dataset.canvaReady) return; // не переинициализируем уже готовые блоки
+    block.dataset.canvaReady = '1';
+
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+      const h = document.createElement('div');
+      h.className = `resize-handle handle-${pos}`;
+      block.appendChild(h);
+
+      h.onmousedown = function(e) {
+        e.stopPropagation();
+        if (!isEditMode) return;
+        
+        let startX = e.clientX, startY = e.clientY;
+        let startW = block.offsetWidth, startH = block.offsetHeight;
+        let startL = block.offsetLeft, startT = block.offsetTop;
+
+        function onMouseMove(ev) {
+          let dx = ev.clientX - startX;
+          let dy = ev.clientY - startY;
+
+          if (pos.includes('e')) block.style.width = Math.max(80, startW + dx) + 'px';
+          if (pos.includes('s')) block.style.height = Math.max(35, startH + dy) + 'px';
+          if (pos.includes('w')) {
+            let nw = Math.max(80, startW - dx);
+            block.style.width = nw + 'px';
+            block.style.left = (startL + (startW - nw)) + 'px';
+          }
+          if (pos.includes('n')) {
+            let nh = Math.max(35, startH - dy);
+            block.style.height = nh + 'px';
+            block.style.top = (startT + (startH - nh)) + 'px';
+          }
+        }
+
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      };
+    });
+
+    block.onmousedown = function(e) {
+      if (e.button !== 0) return; // ПКМ не должна тащить блок
+      if (!isEditMode || e.target.classList.contains('resize-handle')) return;
+
+      let shiftX = e.clientX - block.getBoundingClientRect().left;
+      let shiftY = e.clientY - block.getBoundingClientRect().top;
+      const canvas = document.getElementById('mainCanvas');
+
+      function moveAt(pageX, pageY) {
+        let rect = canvas.getBoundingClientRect();
+        block.style.left = Math.max(0, pageX - rect.left - shiftX) + 'px';
+        block.style.top = Math.max(0, pageY - rect.top - shiftY) + 'px';
+      }
+
+      function onMouseMove(ev) { moveAt(ev.pageX, ev.pageY); }
+      document.addEventListener('mousemove', onMouseMove);
+
+      document.onmouseup = function() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.onmouseup = null;
+      };
+    };
+
+    block.oncontextmenu = function(e) {
+      if (!isEditMode) return;
+      if (e.target.closest && e.target.closest('.card')) return; // ячейкой блюда занимается её собственный обработчик
+      e.preventDefault();
+      imageTarget = { type: 'block', el: block };
+      showCustomContextMenu(e.pageX, e.pageY);
+    };
+  });
+}
+
+/* Единая цель для замены картинки: блок (категория/шапка) ИЛИ конкретное блюдо */
+let imageTarget = null;
+const customContextMenu = document.getElementById('customContextMenu');
+
+function showCustomContextMenu(x, y) {
+  customContextMenu.style.left = x + 'px';
+  customContextMenu.style.top = y + 'px';
+  customContextMenu.classList.add('show');
+}
+
+function hideCustomContextMenu() {
+  customContextMenu.classList.remove('show');
+}
+
+// Закрываем меню при клике в любом другом месте экрана
+document.addEventListener('mousedown', function(e) {
+  if (!customContextMenu.contains(e.target)) {
+    hideCustomContextMenu();
+  }
+});
+
+function applyBlockImage(block, dataUrl) {
+  const iconWrap = block.querySelector('.icon-wrap');
+  if (!iconWrap) {
+    showToast('У этого блока нет значка. Кликните ПКМ по кнопке категории или по ячейке блюда.');
+    return;
+  }
+  if (!block.dataset.originalIcon) {
+    block.dataset.originalIcon = iconWrap.innerHTML;
+  }
+  iconWrap.innerHTML = `<img src="${dataUrl}" class="custom-icon">`;
+  iconWrap.classList.add('icon-fill');
+  const btnEl = block.querySelector('.tabbtn');
+  if (btnEl) btnEl.classList.add('has-bg-image');
+  showToast('Иконка изменена на ваше фото!');
+}
+
+// Пункт меню: "Изменить стикер на рисунок"
+document.getElementById('menuChangeToImage').onclick = function() {
+  hideCustomContextMenu();
+  if (imageTarget) {
+    document.getElementById('filePicker').click();
+  }
+};
+
+// Пункт меню: "Вернуть обычный стикер"
+document.getElementById('menuResetToSticker').onclick = function() {
+  hideCustomContextMenu();
+  if (!imageTarget) return;
+
+  if (imageTarget.type === 'block') {
+    const block = imageTarget.el;
+    const iconWrap = block.querySelector('.icon-wrap');
+    const originalIcon = block.dataset.originalIcon;
+    if (iconWrap && originalIcon) {
+      iconWrap.innerHTML = originalIcon;
+      iconWrap.classList.remove('icon-fill');
+      const btnEl = block.querySelector('.tabbtn');
+      if (btnEl) btnEl.classList.remove('has-bg-image');
+      showToast('Стикер восстановлен!');
+    }
+  } else if (imageTarget.type === 'dish') {
+    delete imageTarget.item.image;
+    saveMenuToStorage();
+    showToast('Стандартная иконка блюда восстановлена!');
+  }
+};
+
+document.getElementById('filePicker').onchange = function(e) {
+  const file = e.target.files[0];
+  if (file && imageTarget) {
+    const target = imageTarget; // фиксируем цель на момент выбора файла
+    if (target.type === 'block') {
+      readImageCompressed(file, 256, function(dataUrl) {
+        applyBlockImage(target.el, dataUrl);
+      });
+    } else if (target.type === 'dish') {
+      readImageCompressed(file, 480, function(dataUrl) {
+        target.item.image = dataUrl;
+        saveMenuToStorage();
+        showToast('Картинка блюда обновлена!');
+      });
+    }
+  }
+  // Очищаем значение input, чтобы можно было выбрать тот же файл повторно
+  e.target.value = '';
+};
+
+/* ДАННЫЕ КЛИЕНТА ВНУТРИ ЧЕКА НА ЭКРАНЕ */function renderClientSummary() {
+  const table = document.getElementById('inputTableNum').value.trim();
+  const client = document.getElementById('inputClientName').value.trim();
+  const phone = document.getElementById('inputClientPhone').value.trim();
+  const box = document.getElementById('clientSummary');
+
+  box.innerHTML = `
+    <div class="cs-row"><span class="cs-label">Стол:</span><span>${table ? '№' + table : '—'}</span></div>
+    <div class="cs-row"><span class="cs-label">Клиент:</span><span>${client || '—'}</span></div>
+    <div class="cs-row"><span class="cs-label">Телефон:</span><span>${phone || '—'}</span></div>
+  `;
+}
+
+/* ЖИВАЯ ПРОВЕРКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ ЧЕКА */
+['inputTableNum', 'inputClientName', 'inputClientPhone'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    if (this.value.trim()) this.classList.remove('field-error');
+    const stillEmpty = ['inputTableNum', 'inputClientName', 'inputClientPhone']
+      .some(k => !document.getElementById(k).value.trim());
+    if (!stillEmpty) document.getElementById('requiredWarn').classList.remove('show');
+    renderClientSummary();
+  });
+});
+
+/* УПРАВЛЕНИЕ РЕЖИМАМИ И ОВЕРЛЕЯМИ */
+const startCanvaBtn = document.getElementById('startCanvaModeBtn');
+const editBarBanner = document.getElementById('editBarBanner');
+const saveLayoutBtn = document.getElementById('saveLayoutBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const historyOverlay = document.getElementById('historyOverlay');
+const profitOverlay = document.getElementById('profitOverlay');
+startCanvaBtn.onclick = () => {
+  isEditMode = true;
+  document.body.classList.add('edit-mode');
+  settingsOverlay.classList.remove('show');
+  editBarBanner.classList.add('show');
+  showToast('Режим Конструктора включен!');
+};
+
+saveLayoutBtn.onclick = () => {
+  isEditMode = false;
+  document.body.classList.remove('edit-mode');
+  editBarBanner.classList.remove('show');
+  saveLayout();
+  showToast('Макет сохранен!');
+};
+
+document.getElementById('openSettingsBtn').onclick = () => {
+  updateCategorySelectOptions();
+  renderManageList();
+  settingsOverlay.classList.add('show');
+};
+document.getElementById('closeSettingsBtn').onclick = () => settingsOverlay.classList.remove('show');
+
+document.getElementById('openHistoryBtn').onclick = () => {
+  renderHistoryTable();
+  historyOverlay.classList.add('show');
+};
+document.getElementById('closeHistoryBtn').onclick = () => historyOverlay.classList.remove('show');
+
+/* ГРАФИК ПРИБЫЛИ */
+function getLastNDaysProfits(n) {
+  const days = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = d.toLocaleDateString('ru-RU');
+    days.push({ key, label: d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }), total: 0 });
+  }
+  receiptHistory.forEach(rec => {
+    const recDateKey = new Date(rec.isoDate || Date.now()).toLocaleDateString('ru-RU');
+    const dayObj = days.find(d => d.key === recDateKey);
+    if (dayObj) dayObj.total += rec.total;
+  });
+  return days;
+}
+
+function renderProfitChart() {
+  const days = getLastNDaysProfits(7);
+  const maxVal = Math.max(...days.map(d => d.total), 1);
+  const barWidth = 40;
+  const chartWidth = Math.max(560, days.length * 90);
+  const chartHeight = 240;
+  const baseline = chartHeight - 40;
+  const gap = (chartWidth - barWidth * days.length) / (days.length + 1);
+
+  let bars = '';
+  const points = [];
+  days.forEach((d, idx) => {
+    const barHeight = Math.round((d.total / maxVal) * 160);
+    const x = gap + idx * (barWidth + gap);
+    const y = baseline - barHeight;
+    const isToday = idx === days.length - 1;
+    const color = isToday ? 'var(--orange)' : 'var(--purple)';
+    bars += `
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(barHeight,2)}" rx="8" fill="${color}" opacity="0.85"/>
+      <text x="${x + barWidth / 2}" y="${baseline + 18}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Inter, sans-serif">${d.label}</text>
+      <text x="${x + barWidth / 2}" y="${y - 8}" text-anchor="middle" font-size="10" fill="var(--ink)" font-family="JetBrains Mono, monospace">${d.total > 0 ? Math.round(d.total / 1000) + 'k' : '0'}</text>
+    `;
+    points.push([x + barWidth / 2, y]);
+  });
+
+  const linePoints = points.map(p => p.join(',')).join(' ');
+  const dots = points.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--green)"/>`).join('');
+
+  const svg = `
+    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" width="100%" height="${chartHeight}" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="${baseline}" x2="${chartWidth}" y2="${baseline}" stroke="var(--line)" stroke-width="1.5"/>
+      ${bars}
+      <polyline points="${linePoints}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+    </svg>
+  `;
+  document.getElementById('profitChartWrap').innerHTML = svg;
+
+  // Тренд: сегодня против вчера
+  const today = days[days.length - 1].total;
+  const yesterday = days[days.length - 2] ? days[days.length - 2].total : 0;
+  const badge = document.getElementById('profitTrendBadge');
+  if (today > yesterday) {
+    const diffPct = yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : 100;
+    badge.textContent = `📈 Рост на ${diffPct}% по сравнению со вчера`;
+    badge.style.background = 'rgba(31,157,85,0.15)';
+    badge.style.color = 'var(--green)';
+  } else if (today < yesterday) {
+    const diffPct = yesterday > 0 ? Math.round(((yesterday - today) / yesterday) * 100) : 100;
+    badge.textContent = `📉 Падение на ${diffPct}% по сравнению со вчера`;
+    badge.style.background = 'rgba(225,72,72,0.15)';
+    badge.style.color = 'var(--red)';
+  } else {
+    badge.textContent = `➖ Без изменений по сравнению со вчера`;
+    badge.style.background = 'rgba(138,127,118,0.15)';
+    badge.style.color = 'var(--muted)';
+  }
+
+  // Сводка
+  const weekTotal = days.reduce((acc, d) => acc + d.total, 0);
+  const avgDaily = Math.round(weekTotal / days.length);
+  const bestDay = days.reduce((a, b) => (b.total > a.total ? b : a), days[0]);
+  const summaryGrid = document.getElementById('profitSummaryGrid');
+  summaryGrid.innerHTML = `
+    <div style="background:var(--purple-soft); padding:14px; border-radius:12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+      <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase;">Сегодня</div>
+      <div style="font-size:18px; font-weight:700; margin-top:4px;">${today.toLocaleString()} сум</div>
+    </div>
+    <div style="background:var(--purple-soft); padding:14px; border-radius:12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+      <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase;">За 7 дней</div>
+      <div style="font-size:18px; font-weight:700; margin-top:4px;">${weekTotal.toLocaleString()} сум</div>
+    </div>
+    <div style="background:var(--purple-soft); padding:14px; border-radius:12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+      <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase;">Среднее в день</div>
+      <div style="font-size:18px; font-weight:700; margin-top:4px;">${avgDaily.toLocaleString()} сум</div>
+    </div>
+    <div style="background:var(--purple-soft); padding:14px; border-radius:12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+      <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase;">Лучший день</div>
+      <div style="font-size:18px; font-weight:700; margin-top:4px;">${bestDay.label}: ${bestDay.total.toLocaleString()} сум</div>
+    </div>
+  `;
+}
+
+document.getElementById('profitBtn').onclick = () => {
+  if (isEditMode) return;
+  renderProfitChart();
+  profitOverlay.classList.add('show');
+};
+document.getElementById('closeProfitBtn').onclick = () => profitOverlay.classList.remove('show');
+
+/* ИСТОРИЯ ЧЕКОВ И ФИЛЬТРАЦИЯ ПО ДАТАМ */
+function renderHistoryTable(startDate = null, endDate = null) {
+  const tbody = document.getElementById('historyTableBody');
+  tbody.innerHTML = '';
+
+  let filteredHistory = receiptHistory;
+
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    filteredHistory = receiptHistory.filter(rec => {
+      const recDate = new Date(rec.isoDate || Date.now());
+      return recDate >= start && recDate <= end;
+    });
+  }
+
+  if (!filteredHistory.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--muted);">За данный период чеков не найдено.</td></tr>';
+    document.getElementById('historyPeriodProfit').textContent = 'Выручка за период: 0 сум';
+    return;
+  }
+
+  let periodProfit = 0;
+  filteredHistory.forEach((rec) => {
+    periodProfit += rec.total;
+    const itemsStr = rec.items.map(i => `${i.name} (x${i.qty})`).join(', ');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>#${rec.id}</b></td>
+      <td>${rec.date}</td>
+      <td>${rec.table ? '№' + rec.table : '-'}</td>
+      <td>${rec.client || '-'}</td>
+      <td>${rec.phone || '-'}</td>
+      <td>${itemsStr}</td>
+      <td>${rec.service.toLocaleString()} сум</td>
+      <td><b>${rec.total.toLocaleString()} сум</b></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('historyPeriodProfit').textContent = `Выручка за выбранный период: ${periodProfit.toLocaleString()} сум`;
+
+  // Подсчет выручки за текущий день для главного экрана
+  const todayStr = new Date().toLocaleDateString('ru-RU');
+  const todayProfit = receiptHistory
+    .filter(r => r.date.includes(todayStr))
+    .reduce((acc, r) => acc + r.total, 0);
+  document.getElementById('todayProfitVal').textContent = todayProfit.toLocaleString() + ' сум';
+}
+
+document.getElementById('applyDateFilterBtn').onclick = () => {
+  const sDate = document.getElementById('filterStartDate').value;
+  const eDate = document.getElementById('filterEndDate').value;
+  if (!sDate || !eDate) { showToast('⚠️ Выберите обе даты'); return; }
+  renderHistoryTable(sDate, eDate);
+};
+
+document.getElementById('resetDateFilterBtn').onclick = () => {
+  document.getElementById('filterStartDate').value = '';
+  document.getElementById('filterEndDate').value = '';
+  renderHistoryTable();
+};
+
+document.getElementById('clearHistoryBtn').onclick = async () => {
+  const ok = await askConfirm({
+    title: 'Очистить историю?',
+    text: `Все сохранённые чеки (${receiptHistory.length}) и данные о выручке будут стёрты навсегда.`,
+    okText: 'Да, очистить'
+  });
+  if (ok) {
+    receiptHistory = [];
+    safeSetItem('receipt_history_v1', JSON.stringify(receiptHistory));
+    renderHistoryTable();
+    showToast('✅ История чеков успешно очищена');
+  }
+};
+
+/* АВТОПОДСТАНОВКА СТИКЕРА В ФОРМАХ */
+const newCatNameEl = document.getElementById('newCatName');
+const newCatIconEl = document.getElementById('newCatIcon');
+const newDishNameEl = document.getElementById('newDishName');
+const newDishIconEl = document.getElementById('newDishIcon');
+let catIconTouched = false;
+let dishIconTouched = false;
+
+newCatIconEl.oninput = () => { catIconTouched = true; };
+newCatNameEl.oninput = () => {
+  if (catIconTouched) return;
+  const em = guessEmoji(newCatNameEl.value);
+  if (em) newCatIconEl.value = em;
+};
+
+newDishIconEl.oninput = () => { dishIconTouched = true; };
+newDishNameEl.oninput = () => {
+  if (dishIconTouched) return;
+  const em = guessEmoji(newDishNameEl.value);
+  if (em) newDishIconEl.value = em;
+};
+
+/* ДОБАВЛЕНИЕ КАТЕГОРИЙ И ЯЧЕЕК */
+document.getElementById('addCategoryBtn').onclick = () => {
+  const name = document.getElementById('newCatName').value.trim();
+  const icon = document.getElementById('newCatIcon').value.trim() || '🍕';
+  if (!name) { showToast('⚠️ Введите название категории'); return; }
+
+  const catKey = 'cat_' + Date.now();
+  menu[catKey] = { name: name, icon: icon, items: [] };
+  saveMenuToStorage();
+
+  const mainCanvas = document.getElementById('mainCanvas');
+  const newBlock = document.createElement('div');
+  newBlock.className = 'drag-block';
+  newBlock.id = 'block_' + catKey;
+  newBlock.style.left = '28px';
+  newBlock.style.top = '160px';
+  newBlock.style.width = '140px';
+  newBlock.style.height = '45px';
+
+  newBlock.innerHTML = `
+    <button class="tabbtn" onclick="switchCategory('${catKey}', this)">
+      <span class="icon-wrap">${icon}</span> <span>${name}</span>
+    </button>
+  `;
+  mainCanvas.appendChild(newBlock);
+
+  initCanvaEngine();
+  renderManageList();
+  newCatNameEl.value = '';
+  catIconTouched = false;
+  showToast(`Категория "${name}" создана!`);
+};
+
+document.getElementById('addDishBtn').onclick = () => {
+  const catKey = document.getElementById('selectCatForDish').value;
+  const name = document.getElementById('newDishName').value.trim();
+  const price = parseInt(document.getElementById('newDishPrice').value);
+
+  if (!catKey || !name || isNaN(price)) {
+    showToast('⚠️ Заполните все поля для блюда');
+    return;
+  }
+
+  const icon = newDishIconEl.value.trim() || guessEmoji(name) || menu[catKey].icon;
+  menu[catKey].items.push({ name, price, icon });
+  saveMenuToStorage();
+  renderManageList();
+  newDishNameEl.value = '';
+  document.getElementById('newDishPrice').value = '';
+  newDishIconEl.value = '';
+  dishIconTouched = false;
+  showToast(`Ячейка блюда "${name}" добавлена!`);
+};
+
+function switchCategory(catId, btnEl) {
+  if (isEditMode) return;
+  activeCatId = catId;
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const catTitle = document.getElementById('catTitle');
+  grid.innerHTML = '';
+  const cat = menu[activeCatId];
+  if (!cat) { catTitle.textContent = 'Категория не выбрана'; return; }
+  catTitle.textContent = `${cat.icon} ${cat.name}`;
+
+  cat.items.forEach((item) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const mediaContent = item.image
+      ? `<img src="${item.image}" alt="${item.name}">`
+      : `<span class="emoji-text">${item.icon || cat.icon}</span>`;
+    card.innerHTML = `
+      <div class="media-box">${mediaContent}</div>
+      <div class="name">${item.name}</div>
+      <div class="price">${item.price.toLocaleString()} сум</div>
+    `;
+    card.onclick = () => { if (!isEditMode && !isOrderSealed) addToOrder(item.name, item.price); };
+    // ПКМ по блюду в режиме Конструктора — заменить картинку блюда на своё фото
+    card.oncontextmenu = function(e) {
+      if (!isEditMode) return;
+      e.preventDefault();
+      e.stopPropagation(); // ВАЖНО: не даём блоку-родителю перехватить цель
+      imageTarget = { type: 'dish', item: item };
+      showCustomContextMenu(e.pageX, e.pageY);
+    };
+    grid.appendChild(card);
+  });
+}
+
+function addToOrder(name, price) {
+  const exist = currentOrder.find(o => o.name === name);
+  if (exist) exist.qty++;
+  else currentOrder.push({ name, price, qty: 1 });
+  renderReceipt();
+}
+
+function updateDateTime() {
+  const now = new Date();
+  document.getElementById('receiptDateTime').textContent = now.toLocaleString('ru-RU');
+}
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
+function renderReceipt() {
+  const rItems = document.getElementById('rItems');
+  const totalsWrap = document.getElementById('rTotalsWrap');
+  const printBtn = document.getElementById('printBtn');
+  const shell = document.getElementById('receiptShell');
+
+  if (!currentOrder.length) {
+    rItems.innerHTML = '<div class="r-empty">Чек пуст.<br>Нажмите на позицию слева.</div>';
+    totalsWrap.style.display = 'none';
+    printBtn.disabled = true;
+    printBtn.classList.remove('btn-sealed');
+    printBtn.textContent = '🖨 Печать / Пробить';
+    shell.classList.remove('sealed');
+    isOrderSealed = false;
+    return;
+  }
+
+  let subtotal = 0;
+  rItems.innerHTML = '';
+  currentOrder.forEach((item) => {
+    subtotal += item.price * item.qty;
+    const row = document.createElement('div');
+    row.className = 'r-row';
+    row.innerHTML = `<div><b>${item.name}</b> x${item.qty}</div><div>${(item.price * item.qty).toLocaleString()} сум</div>`;
+    rItems.appendChild(row);
+  });
+
+  const serviceFee = Math.round(subtotal * 0.10); // 10% ОБСЛУЖИВАНИЕ
+  const total = subtotal + serviceFee;
+
+  document.getElementById('rSubTotal').textContent = subtotal.toLocaleString() + ' сум';
+  document.getElementById('rServiceTotal').textContent = serviceFee.toLocaleString() + ' сум';
+  document.getElementById('rTotal').textContent = total.toLocaleString() + ' сум';
+  totalsWrap.style.display = 'block';
+
+  if (!isOrderSealed) {
+    printBtn.disabled = false;
+  }
+}
+
+/* ФУНКЦИЯ ПЕЧАТИ И ЗАПЕЧАТЫВАНИЯ ЧЕКА */
+document.getElementById('printBtn').onclick = () => {
+  if (!currentOrder.length || isOrderSealed) return;
+
+  // ОБЯЗАТЕЛЬНЫЕ ПОЛЯ: стол, имя, телефон
+  const tableEl = document.getElementById('inputTableNum');
+  const nameEl = document.getElementById('inputClientName');
+  const phoneEl = document.getElementById('inputClientPhone');
+  const requiredEls = [tableEl, nameEl, phoneEl];
+
+  const warnEl = document.getElementById('requiredWarn');
+  requiredEls.forEach(el => el.classList.remove('field-error'));
+
+  const emptyEls = requiredEls.filter(el => !el.value.trim());
+  if (emptyEls.length) {
+    emptyEls.forEach(el => el.classList.add('field-error'));
+    warnEl.textContent = '⚠️ ОБЯЗАТЕЛЬНО ЗАПОЛНИТЕ ЭТИ МЕСТА: стол, имя фамилия, телефон!';
+    warnEl.classList.add('show');
+    emptyEls[0].focus();
+    showToast('Заполните стол, имя и телефон клиента!');
+    return;
+  }
+  if (phoneEl.value.replace(/\D/g, '').length < 7) {
+    phoneEl.classList.add('field-error');
+    warnEl.textContent = '⚠️ ТЕЛЕФОН ВВЕДЁН НЕВЕРНО — минимум 7 цифр!';
+    warnEl.classList.add('show');
+    phoneEl.focus();
+    showToast('Телефон введён неверно!');
+    return;
+  }
+  warnEl.classList.remove('show');
+
+  const brand = brandNameInput.value;
+  const address = brandSubInput.value;
+  const table = tableEl.value.trim();
+  const client = nameEl.value.trim();
+  const phone = phoneEl.value.trim();
+  const dateStr = new Date().toLocaleString('ru-RU');
+
+  let subtotal = currentOrder.reduce((acc, i) => acc + i.price * i.qty, 0);
+  let serviceFee = Math.round(subtotal * 0.10);
+  let grandTotal = subtotal + serviceFee;
+
+  // Формируем контент для физического принтера
+  let itemsHtml = '';
+  currentOrder.forEach(i => {
+    itemsHtml += `<div style="display:flex; justify-content:space-between; font-size:15px; margin-bottom:4px;"><span>${i.name} x${i.qty}</span><span>${(i.price*i.qty).toLocaleString()} сум</span></div>`;
+  });
+
+  const printDiv = document.getElementById('printableReceipt');
+  printDiv.style.display = 'block';
+  printDiv.innerHTML = `
+    <div style="text-align:center; font-weight:bold; font-size:24px; margin-bottom:4px;">${brand}</div>
+    <div style="text-align:center; font-size:15px; margin-bottom:8px;">${address}</div>
+    <div style="text-align:center; font-size:14px; margin-bottom:8px;">${dateStr}</div>
+    <hr style="border:none; border-top:2px dashed #000; margin:12px 0;">
+    <div style="font-size:15px; margin-bottom:4px;">Стол: №${table}</div>
+    <div style="font-size:15px; margin-bottom:4px;">Клиент: ${client}</div>
+    <div style="font-size:15px; margin-bottom:4px;">Телефон: ${phone}</div>
+    <hr style="border:none; border-top:2px dashed #000; margin:12px 0;">
+    ${itemsHtml}
+    <hr style="border:none; border-top:2px dashed #000; margin:12px 0;">
+    <div style="display:flex; justify-content:space-between; font-size:15px; margin-bottom:4px;"><span>Сумма:</span><span>${subtotal.toLocaleString()} сум</span></div>
+    <div style="display:flex; justify-content:space-between; font-size:15px; margin-bottom:4px;"><span>Обслуживание (10%):</span><span>${serviceFee.toLocaleString()} сум</span></div>
+    <hr style="border:none; border-top:2px dashed #000; margin:12px 0;">
+    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:20px;"><span>ИТОГО:</span><span>${grandTotal.toLocaleString()} сум</span></div>
+    <hr style="border:none; border-top:2px dashed #000; margin:12px 0;">
+    <div style="text-align:center; font-size:14px; font-style:italic; margin-top:14px;">Спасибо за визит!<br>Будем рады видеть вас снова!</div>
+  `;
+
+  // Окна печати принтера
+  window.print();
+  printDiv.style.display = 'none';
+
+  // Сохраняем чек в истории
+  const receiptEntry = {
+    id: Math.floor(1000 + Math.random() * 9000),
+    date: dateStr,
+    isoDate: new Date().toISOString(),
+    table: table,
+    client: client,
+    phone: phone,
+    items: [...currentOrder],
+    subtotal: subtotal,
+    service: serviceFee,
+    total: grandTotal
+  };
+
+  receiptHistory.unshift(receiptEntry);
+  safeSetItem('receipt_history_v1', JSON.stringify(receiptHistory));
+  renderHistoryTable();
+
+  // ЗАПЕЧАТЫВАЕМ ЧЕК (Блокируем от редактирования)
+  isOrderSealed = true;
+  const printBtn = document.getElementById('printBtn');
+  printBtn.disabled = true;
+  printBtn.classList.add('btn-sealed');
+  printBtn.textContent = '🔒 Чек запечатан';
+  document.getElementById('receiptShell').classList.add('sealed');
+
+  // Замораживаем поля ввода
+  document.getElementById('inputTableNum').disabled = true;
+  document.getElementById('inputClientName').disabled = true;
+  document.getElementById('inputClientPhone').disabled = true;
+
+  showToast(`Чек #${receiptEntry.id} отправлен на печать и запечатан!`);
+};
+
+/* СБРОС И СОЗДАНИЕ НОВОГО ЧЕКА */
+document.getElementById('newOrderBtn').onclick = () => { 
+  currentOrder = [];
+  isOrderSealed = false;
+
+  document.getElementById('inputTableNum').value = '';
+  document.getElementById('inputClientName').value = '';
+  document.getElementById('inputClientPhone').value = '';
+
+  document.getElementById('inputTableNum').disabled = false;
+  document.getElementById('inputClientName').disabled = false;
+  document.getElementById('inputClientPhone').disabled = false;
+
+  ['inputTableNum', 'inputClientName', 'inputClientPhone']
+    .forEach(id => document.getElementById(id).classList.remove('field-error'));
+  document.getElementById('requiredWarn').classList.remove('show');
+
+  renderClientSummary();
+  renderReceipt();
+  showToast('Новый чек открыт');
+};
+
+/* ИНИЦИАЛИЗАЦИЯ */
+splitSamsaAndLavash();
+resetSamsaToSticker();
+initCanvaEngine();
+applySavedLayout();
+renderGrid();
+renderHistoryTable();
+renderManageList();
+renderClientSummary();
+</script>
+
+
+<!-- ОКНО ПРОВЕРКИ ТЕКУЩЕГО ЛОГИНА/ПАРОЛЯ -->
+<div class="confirm-overlay" id="authVerifyOverlay">
+  <div class="confirm-box" id="authVerifyBox" style="text-align:left;background:rgba(13,7,22,.32);border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 60px rgba(40,20,70,.35), inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(255,255,255,.08);">
+    <h3 class="confirm-title" style="text-align:center;">🔐 Введите логин и пароль</h3>
+    <div class="form-group">
+      <label>Логин</label>
+      <input type="text" id="authVerifyUser" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="authVerifyPass" autocomplete="off" />
+    </div>
+    <div class="auth-modal-error" id="authVerifyError">Неверный логин или пароль</div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" id="authVerifyCancelBtn">Отмена</button>
+      <button class="confirm-ok" id="authVerifyOkBtn" style="background:var(--purple); box-shadow:0 6px 16px rgba(124,127,247,.4);">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ОКНО ИЗМЕНЕНИЯ ЛОГИНА И ПАРОЛЯ -->
+<div class="confirm-overlay" id="authChangeOverlay">
+  <div class="confirm-box" id="authChangeBox" style="text-align:left;background:rgba(13,7,22,.32);border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 60px rgba(40,20,70,.35), inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(255,255,255,.08);">
+    <h3 class="confirm-title" style="text-align:center;">🔑 Изменить логин и пароль</h3>
+    <div class="form-group">
+      <label>Новый логин</label>
+      <input type="text" id="authNewUser" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Новый пароль</label>
+      <input type="password" id="authNewPass" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Повторите новый пароль</label>
+      <input type="password" id="authNewPass2" autocomplete="off" />
+    </div>
+    <div class="auth-modal-error" id="authChangeError">Пароли не совпадают</div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" id="authChangeCancelBtn">Отмена</button>
+      <button class="confirm-ok" id="authChangeSaveBtn" style="background:var(--purple); box-shadow:0 6px 16px rgba(124,127,247,.4);">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== FIRDAVS AUTH: username / password с localStorage ===== */
+(function(){
+  const AUTH_KEY = 'firdavs_auth_v1';
+  function getCreds(){
+    try{
+      const raw = localStorage.getItem(AUTH_KEY);
+      if(raw){ const o=JSON.parse(raw); if(o&&o.user&&o.pass) return o; }
+    }catch(e){}
+    return { user:'firdavs', pass:'11111111' };
+  }
+  function setCreds(user,pass){ localStorage.setItem(AUTH_KEY, JSON.stringify({user,pass})); }
+
+  let creds = getCreds();
+  const lock=document.getElementById('firdavsLockBtn');
+  const screen=document.getElementById('firdavsLogin');
+  const orb=document.getElementById('loginOrb');
+  const user=document.getElementById('firdavsUser');
+  const pass=document.getElementById('firdavsPass');
+  const btn=document.getElementById('firdavsLoginBtn');
+  const err=document.getElementById('firdavsError');
+  const eye=document.getElementById('firdavsEye');
+
+  function showLogin(){
+    document.body.classList.remove('app-visible'); document.body.classList.add('login-locked');
+    screen.style.display='flex'; screen.setAttribute('aria-hidden','false'); user.value=''; pass.value=''; err.classList.remove('show');
+    setTimeout(()=>user.focus(),120);
+  }
+  function unlock(){
+    document.body.classList.remove('login-locked'); document.body.classList.add('app-visible');
+    screen.style.display='none'; screen.setAttribute('aria-hidden','true');
+  }
+  function check(){
+    if(user.value.trim()===creds.user && pass.value===creds.pass){
+      err.classList.remove('show');
+      orb.animate([{transform:'scale(1)'},{transform:'scale(1.06)'},{transform:'scale(0.2)',opacity:0}],{duration:430,easing:'ease-in'}).onfinish=unlock;
+    }else{
+      err.classList.add('show'); orb.classList.remove('login-shake'); void orb.offsetWidth; orb.classList.add('login-shake'); pass.select();
+    }
+  }
+  btn.addEventListener('click',check);
+  [user,pass].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter')check()}));
+  eye.addEventListener('click',()=>{pass.type=pass.type==='password'?'text':'password';eye.textContent=pass.type==='password'?'◉':'◎'});
+  lock.addEventListener('click',showLogin);
+
+  /* ===== СМЕНА ПАРОЛЯ ===== */
+  const openAuthChangeBtn = document.getElementById('openAuthChangeBtn');
+  const authVerifyOverlay = document.getElementById('authVerifyOverlay');
+  const authVerifyUser = document.getElementById('authVerifyUser');
+  const authVerifyPass = document.getElementById('authVerifyPass');
+  const authVerifyError = document.getElementById('authVerifyError');
+  const authVerifyOkBtn = document.getElementById('authVerifyOkBtn');
+  const authVerifyCancelBtn = document.getElementById('authVerifyCancelBtn');
+
+  const authChangeOverlay = document.getElementById('authChangeOverlay');
+  const authNewUser = document.getElementById('authNewUser');
+  const authNewPass = document.getElementById('authNewPass');
+  const authNewPass2 = document.getElementById('authNewPass2');
+  const authChangeError = document.getElementById('authChangeError');
+  const authChangeSaveBtn = document.getElementById('authChangeSaveBtn');
+  const authChangeCancelBtn = document.getElementById('authChangeCancelBtn');
+
+  function openVerifyModal(){
+    authVerifyUser.value=''; authVerifyPass.value=''; authVerifyError.classList.remove('show');
+    authVerifyOverlay.classList.add('show'); setTimeout(()=>authVerifyUser.focus(),50);
+  }
+  function closeVerifyModal(){ authVerifyOverlay.classList.remove('show'); }
+  function openChangeModal(){
+    authNewUser.value=''; authNewPass.value=''; authNewPass2.value=''; authChangeError.classList.remove('show');
+    authChangeOverlay.classList.add('show'); setTimeout(()=>authNewUser.focus(),50);
+  }
+  function closeChangeModal(){ authChangeOverlay.classList.remove('show'); }
+
+  if(openAuthChangeBtn){
+    openAuthChangeBtn.addEventListener('click', ()=>{
+      document.getElementById('settingsOverlay').classList.remove('show');
+      openVerifyModal();
+    });
+  }
+  authVerifyCancelBtn.addEventListener('click', closeVerifyModal);
+  authVerifyOkBtn.addEventListener('click', ()=>{
+    const u = authVerifyUser.value.trim().toLowerCase();
+    const p = authVerifyPass.value;
+    if(u === creds.user.trim().toLowerCase() && p === creds.pass){
+      closeVerifyModal(); openChangeModal();
+    }else{
+      authVerifyError.textContent='Неверный логин или пароль'; authVerifyError.classList.add('show');
+      authVerifyPass.value=''; authVerifyPass.focus();
+    }
+  });
+  authChangeCancelBtn.addEventListener('click', closeChangeModal);
+  authChangeSaveBtn.addEventListener('click', ()=>{
+    const nu = authNewUser.value.trim();
+    const np = authNewPass.value;
+    const np2 = authNewPass2.value;
+    if(!nu || !np || !np2){ authChangeError.textContent='Заполните все поля'; authChangeError.classList.add('show'); return; }
+    if(np !== np2){ authChangeError.textContent='Пароли не совпадают'; authChangeError.classList.add('show'); return; }
+    creds = { user: nu, pass: np };
+    setCreds(nu, np);
+    authChangeError.classList.remove('show'); closeChangeModal();
+    if(typeof showToast === 'function') showToast('Логин и пароль успешно изменены');
+  });
+
+  showLogin();
+})();
+</script>
+</body>
+</html>
